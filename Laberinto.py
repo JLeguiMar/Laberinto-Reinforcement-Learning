@@ -7,125 +7,127 @@ Original file is located at
     https://colab.research.google.com/drive/1zyFU15-NfB6ubPOZCuWHvFg5aj6vpZb0
 """
 
-# Importamos las bibliotecas necesarias para cálculos numéricos, aleatorios y visualización
-import numpy as np
-import random
-import matplotlib.pyplot as plt
+# Importamos las bibliotecas necesarias para cálculos numéricos, generación aleatoria y visualización
+import numpy as np  # Biblioteca para manejar matrices y cálculos matemáticos
+import random  # Módulo para operaciones aleatorias
+import matplotlib.pyplot as plt  # Biblioteca para visualización gráfica
 
-# Función para generar el laberinto
+# Función para generar un laberinto aleatorio
 def generar_laberinto(tamano):
-    laberinto = np.ones((tamano, tamano), dtype=int)  # Inicializar con paredes
+    laberinto = np.ones((tamano, tamano), dtype=int)  # Inicializamos una matriz llena de paredes (valor 1)
 
-    # Cambié a un enfoque iterativo para evitar la recursión excesiva
+    # Subfunción para abrir caminos de manera iterativa
     def abrir_caminos(x, y):
-        pila = [(x, y)]
+        pila = [(x, y)]  # Usamos una pila para gestionar las celdas a explorar
         while pila:
-            x, y = pila.pop()
-            direcciones = [(0, 2), (0, -2), (2, 0), (-2, 0)]
-            random.shuffle(direcciones)
+            x, y = pila.pop()  # Sacamos la celda actual
+            direcciones = [(0, 2), (0, -2), (2, 0), (-2, 0)]  # Movimientos en las 4 direcciones
+            random.shuffle(direcciones)  # Mezclamos las direcciones para crear aleatoriedad
             for dx, dy in direcciones:
-                nx, ny = x + dx, y + dy
+                nx, ny = x + dx, y + dy  # Nueva celda tras moverse
                 if 0 < nx < tamano - 1 and 0 < ny < tamano - 1 and laberinto[nx, ny] == 1:
-                    laberinto[nx, ny] = 0
-                    laberinto[x + dx // 2, y + dy // 2] = 0
-                    pila.append((nx, ny))  # Agregar nueva celda a la pila
+                    laberinto[nx, ny] = 0  # Abrimos la celda
+                    laberinto[x + dx // 2, y + dy // 2] = 0  # Abrimos el camino intermedio
+                    pila.append((nx, ny))  # Agregamos la nueva celda a la pila
 
-    laberinto[1, 1] = 0
-    abrir_caminos(1, 1)
-    laberinto[tamano - 2, tamano - 2] = 2  # Establecer la meta
-    return laberinto
+    laberinto[1, 1] = 0  # Establecemos el punto de inicio
+    abrir_caminos(1, 1)  # Llamamos a la función para abrir caminos
+    laberinto[tamano - 2, tamano - 2] = 2  # Marcamos el punto de meta con el valor 2
+    return laberinto  # Devolvemos el laberinto generado
 
-# Acciones y validación de movimientos
-acciones = [(0, -1), (0, 1), (-1, 0), (1, 0)]  # Arriba, abajo, izquierda, derecha
+# Definimos las acciones posibles y validación de movimientos
+acciones = [(0, -1), (0, 1), (-1, 0), (1, 0)]  # Movimientos: arriba, abajo, izquierda, derecha
 
 def es_movimiento_valido(laberinto, estado, accion):
+    # Comprueba si un movimiento es válido
     x, y = estado
     dx, dy = accion
-    nx, ny = x + dx, y + dy
+    nx, ny = x + dx, y + dy  # Calcula la nueva posición
     if 0 <= nx < laberinto.shape[0] and 0 <= ny < laberinto.shape[1]:
-        return laberinto[nx, ny] != 1  # No es una pared
+        return laberinto[nx, ny] != 1  # Es válido si no es una pared
     return False
 
 def siguiente_estado(estado, accion):
+    # Calcula el siguiente estado basado en la acción
     x, y = estado
     dx, dy = accion
     return x + dx, y + dy
 
-# Parámetros Q-Learning
+# Parámetros del algoritmo Q-Learning
 alpha = 0.1  # Tasa de aprendizaje
 gamma = 0.9  # Factor de descuento
-epsilon = 0.1  # Exploración-explotación
-episodios = 1000
+epsilon = 0.1  # Parámetro para balancear exploración y explotación
+episodios = 1000  # Número de episodios de entrenamiento
 
-# Generar el laberinto
-tamano = 100
+# Generamos el laberinto
+tamano = 100  # Tamaño del laberinto
 laberinto = generar_laberinto(tamano)
 
-# Inicializar la tabla Q
-q_table = np.zeros((tamano, tamano, len(acciones)))
+# Inicializamos la tabla Q para almacenar los valores Q
+q_table = np.zeros((tamano, tamano, len(acciones)))  # Dimensión: (x, y, número de acciones)
 
-# Función para mostrar el laberinto con la posición actual del agente
+# Función para mostrar el laberinto y la posición actual del agente
 def mostrar_laberinto(laberinto, agente=None):
-    laberinto_visual = np.copy(laberinto)
+    laberinto_visual = np.copy(laberinto)  # Creamos una copia para no modificar el original
     if agente:
         x, y = agente
-        laberinto_visual[x, y] = 3  # Usamos 3 para marcar la posición del agente
-    plt.imshow(laberinto_visual, cmap="gray")
+        laberinto_visual[x, y] = 3  # Marcamos la posición del agente con el valor 3
+    plt.imshow(laberinto_visual, cmap="gray")  # Mostramos el laberinto como imagen
     plt.show()
 
-# Entrenamiento del agente
+# Entrenamiento del agente con Q-Learning
 for episodio in range(episodios):
-    estado = (1, 1)  # Estado inicial
+    estado = (1, 1)  # Estado inicial del agente
     while True:
-        # Elegir acción (exploración o explotación)
-        if random.uniform(0, 1) < epsilon:
-            accion_idx = random.randint(0, len(acciones) - 1)  # Explorar
-        else:
-            accion_idx = np.argmax(q_table[estado[0], estado[1]])  # Explotar
+        # Selección de acción: exploración o explotación
+        if random.uniform(0, 1) < epsilon:  # Exploración
+            accion_idx = random.randint(0, len(acciones) - 1)
+        else:  # Explotación
+            accion_idx = np.argmax(q_table[estado[0], estado[1]])
 
-        accion = acciones[accion_idx]
+        accion = acciones[accion_idx]  # Seleccionamos la acción correspondiente
 
-        # Validar movimiento
+        # Validamos si el movimiento es válido
         if not es_movimiento_valido(laberinto, estado, accion):
-            continue
+            continue  # Ignoramos la acción si no es válida
 
-        nuevo_estado = siguiente_estado(estado, accion)
-        recompensa = 1 if laberinto[nuevo_estado] == 2 else -0.1  # Recompensa
+        nuevo_estado = siguiente_estado(estado, accion)  # Calculamos el nuevo estado
+        recompensa = 1 if laberinto[nuevo_estado] == 2 else -0.1  # Definimos la recompensa
 
-        # Actualizar tabla Q
-        mejor_valor_futuro = np.max(q_table[nuevo_estado[0], nuevo_estado[1]])
+        # Actualizamos el valor Q correspondiente
+        mejor_valor_futuro = np.max(q_table[nuevo_estado[0], nuevo_estado[1]])  # Mejor valor futuro
         q_table[estado[0], estado[1], accion_idx] += alpha * (
             recompensa + gamma * mejor_valor_futuro - q_table[estado[0], estado[1], accion_idx]
         )
 
-        # Mostrar el laberinto con la posición actual del agente
+        # Mostramos el laberinto con la posición del agente
         mostrar_laberinto(laberinto, agente=estado)
 
-        # Mover al nuevo estado
+        # Movemos al agente al nuevo estado
         estado = nuevo_estado
 
-        # Terminar si alcanza la meta
+        # Finalizamos el episodio si alcanza la meta
         if laberinto[estado] == 2:
             print(f"Agente alcanzó la meta en episodio {episodio + 1}")
             break
 
-# Resolver el laberinto
+# Resolución del laberinto utilizando la tabla Q entrenada
 def resolver_laberinto(laberinto):
-    estado = (1, 1)
-    pasos = [estado]
-    while laberinto[estado] != 2:
-        accion_idx = np.argmax(q_table[estado[0], estado[1]])
-        accion = acciones[accion_idx]
-        if not es_movimiento_valido(laberinto, estado, accion):
-            print("Movimiento inválido, deteniendo.")
+    estado = (1, 1)  # Punto de inicio
+    pasos = [estado]  # Lista para guardar los pasos de la ruta
+    while laberinto[estado] != 2:  # Iteramos hasta alcanzar la meta
+        accion_idx = np.argmax(q_table[estado[0], estado[1]])  # Seleccionamos la mejor acción
+        accion = acciones[accion_idx]  # Obtenemos la acción correspondiente
+        if not es_movimiento_valido(laberinto, estado, accion):  # Validamos el movimiento
+            print("Movimiento inválido, deteniendo.")  # Si no es válido, terminamos
             break
-        estado = siguiente_estado(estado, accion)
-        pasos.append(estado)
-    return pasos
+        estado = siguiente_estado(estado, accion)  # Actualizamos el estado
+        pasos.append(estado)  # Agregamos el nuevo estado a los pasos
+    return pasos  # Devolvemos la ruta encontrada
 
-# Encontrar la ruta
+# Encontramos la ruta del laberinto resuelto
 ruta = resolver_laberinto(laberinto)
 print(f"Ruta encontrada: {ruta}")
 
-# Mostrar el laberinto final con la ruta
+# Mostramos el laberinto final con la ruta marcada
 mostrar_laberinto(laberinto, ruta)
